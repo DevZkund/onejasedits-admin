@@ -21,7 +21,7 @@ export default function Sidebar() {
       <nav className="flex flex-col space-y-6 text-lg items-start w-full">
         <Link href="/" className="flex items-center gap-3 hover:text-yellow-400">
           <FolderKanban size={20} />
-          <span>Portfolio</span>
+          <span>Services</span>
         </Link>
         <Link href="/About" className="flex items-center gap-3 hover:text-yellow-400">
           <Info size={20} />

@@ -8,6 +8,7 @@ export default function Portfolio() {
     category: "",
     title: "",
     description: "",
+    subDescription: "",
     onLandingPage: false,
     thumbnail: null,
     portfolioImages: [],
@@ -51,6 +52,7 @@ export default function Portfolio() {
       !formData.category ||
       !formData.title ||
       !formData.description ||
+      !formData.subDescription ||
       formData.onLandingPage === null ||
       !formData.thumbnail
     ) {
@@ -62,6 +64,7 @@ export default function Portfolio() {
     body.append("category", formData.category);
     body.append("title", formData.title);
     body.append("description", formData.description);
+    body.append("subDescription", formData.subDescription);
     body.append("onLandingPage", formData.onLandingPage);
     body.append("thumbnail", formData.thumbnail);
     formData.portfolioImages.forEach((file) => {
@@ -74,7 +77,7 @@ export default function Portfolio() {
 
     setLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-portfolio-data`;
+      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-services`;
 
       const res = await fetch(url, {
         method: "POST",
@@ -105,6 +108,7 @@ export default function Portfolio() {
       category: "",
       title: "",
       description: "",
+      subDescription: "",
       onLandingPage: false,
       thumbnail: null,
       portfolioImages: [],
@@ -117,7 +121,7 @@ export default function Portfolio() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-portfolio-data`
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-services`
       );
       const result = await res.json();
 
@@ -141,6 +145,7 @@ export default function Portfolio() {
       category: item.category,
       title: item.title,
       description: item.description,
+      subDescription: item.subDescription,
       onLandingPage: item.onLandingPage,
       thumbnail: null, // Thumbnail ko re-upload karne doge
       portfolioImages: [], // Existing images show nahi kar rahe ho abhi, toh blank rakhna
@@ -154,7 +159,7 @@ export default function Portfolio() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-portfolio-data/${id}`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-service/${id}`,
         {
           method: "DELETE",
         }
@@ -210,6 +215,14 @@ export default function Portfolio() {
             value={formData.description}
             onChange={handleChange}
             placeholder="Description"
+            className="w-full px-3 py-2 border rounded"
+            rows={4}
+          />
+          <textarea
+            name="subDescription"
+            value={formData.subDescription}
+            onChange={handleChange}
+            placeholder="Sub Description"
             className="w-full px-3 py-2 border rounded"
             rows={4}
           />
@@ -334,7 +347,8 @@ export default function Portfolio() {
                     className="w-full h-48 object-cover rounded"
                   />
                   <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
-                  <p className="text-gray-500">{item.description}</p>
+                  <p className="text-gray-500">Description: {item.description}</p><br></br>
+                  <p className="text-gray-500">Sub-Description: {item.subDescription}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {item.portfolioImages.map((img) => (
                       <img
