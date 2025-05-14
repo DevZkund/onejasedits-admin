@@ -9,19 +9,22 @@ export default function ReviewsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [newReview, setNewReview] = useState({
     name: "",
-    rating: "",
+    designation: "",
     comment: "",
+    image: null,
   });
 
-  // Fetch reviews from API
+  // Fetch Reviews
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/client/fetch-reviews`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-testimonials`
+      );
       const data = await res.json();
-
+      console.log("Fetched reviews:", data);
       if (data.success) {
-        setReviews(data.reviews || []);
+        setReviews(data.testimonials || []);
       } else {
         alert("Failed to load reviews.");
       }
@@ -37,36 +40,38 @@ export default function ReviewsPage() {
     fetchReviews();
   }, []);
 
-  // Add new review
+  // Add New Review
   const handleAddReview = async () => {
-    const { name, rating, comment } = newReview;
-    if (!name || !rating || !comment) {
-      alert("Please fill in all fields");
+    const { name, designation, comment, image } = newReview;
+    if (!name || !designation || !comment || !image) {
+      alert("Please fill in all fields including the image.");
       return;
     }
 
-    const newReviewData = {
-      name,
-      rating: parseInt(rating),
-      comment,
-    };
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("designation", designation);
+    formData.append("comment", comment);
+    formData.append("testimonialImage", image); // Key must match backend expectation
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviews: [newReviewData] }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-testimonials`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (res.ok) {
         await fetchReviews();
-        setNewReview({ name: "", rating: "", comment: "" });
+        setNewReview({ name: "", designation: "", comment: "", image: null });
         alert("Review added successfully!");
       } else {
         const errorData = await res.json();
-        console.error("Server error while adding review:", errorData);
-        alert("Failed to add review to the server.");
+        console.error("Server error:", errorData);
+        alert("Failed to add review.");
       }
     } catch (err) {
       console.error("Error adding review:", err);
@@ -76,7 +81,7 @@ export default function ReviewsPage() {
     }
   };
 
-  // Delete a review
+  // Delete Review
   const handleDelete = async (index) => {
     const updated = [...reviews];
     updated.splice(index, 1);
@@ -84,11 +89,14 @@ export default function ReviewsPage() {
     setReviews(updated);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviews: updated }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-reviews`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviews: updated }),
+        }
+      );
 
       if (res.ok) {
         alert("Review deleted and updates sent successfully!");
@@ -102,8 +110,6 @@ export default function ReviewsPage() {
       alert("Failed to delete review and send updates.");
     }
   };
-  console.log("Base URL:", process.env.NEXT_PUBLIC_API_BASE_URL);
-
 
   return (
     <div className="flex h-screen">
@@ -124,21 +130,27 @@ export default function ReviewsPage() {
             className="w-full px-3 py-2 border rounded"
           />
           <input
-            type="number"
-            placeholder="Rating (1-5)"
-            value={newReview.rating}
+            type="text"
+            placeholder="Designation"
+            value={newReview.designation}
             onChange={(e) =>
-              setNewReview({ ...newReview, rating: e.target.value })
+              setNewReview({ ...newReview, designation: e.target.value })
             }
             className="w-full px-3 py-2 border rounded"
-            min={1}
-            max={5}
           />
           <textarea
             placeholder="Comment"
             value={newReview.comment}
             onChange={(e) =>
               setNewReview({ ...newReview, comment: e.target.value })
+            }
+            className="w-full px-3 py-2 border rounded"
+          />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) =>
+              setNewReview({ ...newReview, image: e.target.files[0] })
             }
             className="w-full px-3 py-2 border rounded"
           />
@@ -163,34 +175,45 @@ export default function ReviewsPage() {
             {reviews.map((review, index) => (
               <li
                 key={review.id || `${review.name}-${index}`}
-                className="bg-gray-100 p-4 rounded shadow space-y-2"
+                className="bg-gray-100 p-4 rounded shadow space-y-3"
               >
-                <input
-                  type="text"
-                  value={review.name}
-                  readOnly
-                  className="w-full px-2 py-1 border rounded bg-gray-200 cursor-not-allowed"
-                />
-                <input
-                  type="number"
-                  value={review.rating}
-                  readOnly
-                  className="w-full px-2 py-1 border rounded bg-gray-200 cursor-not-allowed"
-                />
-                <textarea
-                  value={review.comment || review.review}
-                  readOnly
-                  className="w-full px-2 py-1 border rounded bg-gray-200 cursor-not-allowed"
-                />
-                <button
-                  onClick={() => handleDelete(index)}
-                  className="text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  {review.testimonialImage && (
+                    <img
+                      src={review.testimonialImage}
+                      alt={`${review.name}'s image`}
+                      className="w-32 h-32 object-cover rounded border"
+                    />
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <p className="w-full px-2 py-1  rounded bg-gray-200
+                      cursor-not-allowed">
+                      {review.name}
+                      
+                    </p>
+
+                    <input
+                      type="text"
+                      value={review.designation}
+                      readOnly
+                      className="w-full px-2 py-1  rounded bg-gray-200 cursor-not-allowed"
+                    />
+                    <textarea
+                      value={review.comment}
+                      readOnly
+                      className="w-full px-2 py-1  rounded bg-gray-200 cursor-not-allowed"
+                    />
+                    <button
+                      onClick={() => handleDelete(index)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
-          </ul> 
+          </ul>
         )}
       </div>
     </div>

@@ -29,7 +29,7 @@ export default function Sidebar() {
         </Link>
         <Link href="/reviews" className="flex items-center gap-3 hover:text-yellow-400">
           <Star size={20} />
-          <span>Reviews</span>
+          <span>Testimonials</span>
         </Link>
       </nav>
     </div>
