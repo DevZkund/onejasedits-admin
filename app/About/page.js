@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 
 export default function About() {
@@ -12,22 +13,22 @@ export default function About() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   // Fetch About Us info
   const fetchAboutUs = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-aboutUs-info`
-      );
-      const data = await res.json();
-      if (data.success) {
-        setAboutList(data.data || []);
+      const res = await axios.get(`${API_BASE}/api/admin/get-aboutUs-info`);
+      if (res.data.success) {
+        setAboutList(res.data.data || []);
       } else {
-        alert("Failed to fetch About Us data");
+        setStatusMessage("Failed to fetch About Us data");
       }
     } catch (err) {
       console.error("Error fetching:", err);
-      alert("Error fetching About Us");
+      setStatusMessage("Error fetching About Us");
     }
   };
 
@@ -46,49 +47,33 @@ export default function About() {
     }
 
     const body = new FormData();
-    body.append("id", formData.id); // if needed
+    if (formData.id) body.append("id", formData.id);
     body.append("description", formData.description);
-
-    // Append each image with the same key 'images'
     formData.images.forEach((file) => body.append("images", file));
 
     setLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-aboutUs-info`,
-        {
-          method: "POST",
-          body,
-        }
-      );
-
-      if (res.ok) {
+      const res = await axios.post(`${API_BASE}/api/admin/add-aboutUs-info`, body);
+      if (res.status === 200) {
         alert(isEditing ? "Updated successfully!" : "Added successfully!");
         setFormData({ id: "", description: "", images: [] });
         setIsEditing(false);
+        setStatusMessage("");
         fetchAboutUs();
-      } else {
-        alert("Error submitting data");
+        document.getElementById("fileUpload").value = "";
       }
     } catch (err) {
       console.error("Submit error:", err);
-      alert("Failed to submit");
+      alert(err.response?.data?.message || "Failed to submit");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (idToDelete) => {
-    const updatedList = aboutList.filter((item) => item.id !== idToDelete);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-about-info/${idToDelete}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      if (res.ok) {
+      const res = await axios.delete(`${API_BASE}/api/admin/delete-about-info/${idToDelete}`);
+      if (res.status === 200) {
         alert("Deleted successfully!");
         fetchAboutUs();
       } else {
@@ -96,7 +81,7 @@ export default function About() {
       }
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete");
+      alert(err.response?.data?.message || "Failed to delete");
     }
   };
 
@@ -114,6 +99,10 @@ export default function About() {
       <Sidebar />
       <div className="p-6 flex-1 overflow-y-auto bg-gray-50">
         <h1 className="text-2xl font-semibold mb-4">Manage About Us</h1>
+
+        {statusMessage && (
+          <div className="mb-4 text-red-600 font-medium">{statusMessage}</div>
+        )}
 
         {/* Form */}
         <div className="bg-white p-4 rounded shadow space-y-3 mb-6">
@@ -143,13 +132,18 @@ export default function About() {
               className="hidden"
             />
 
-            {/* Show selected filenames (optional) */}
+            {/* Image Previews */}
             {formData.images.length > 0 && (
-              <ul className="mt-2 text-sm text-gray-600 list-disc list-inside">
+              <div className="flex gap-2 mt-2 flex-wrap">
                 {formData.images.map((file, index) => (
-                  <li key={index}>{file.name}</li>
+                  <img
+                    key={index}
+                    src={URL.createObjectURL(file)}
+                    alt={`Preview ${index + 1}`}
+                    className="w-20 h-20 object-cover border rounded"
+                  />
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
@@ -177,7 +171,7 @@ export default function About() {
             <div className="flex flex-wrap gap-2">
               {entry.aboutUsImages.map((img) => (
                 <img
-                  key={img.id}
+                  key={img.id || img.image}
                   src={img.image}
                   alt="About Image"
                   className="w-24 h-24 object-cover border rounded"

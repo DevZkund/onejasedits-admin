@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 
 export default function ReviewsPage() {
   const [deletingReviewId, setDeletingReviewId] = useState(null);
-
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -20,10 +20,10 @@ export default function ReviewsPage() {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
+      const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-testimonials`
       );
-      const data = await res.json();
+      const data = res.data;
       console.log("Fetched reviews:", data);
       if (data.success) {
         setReviews(data.testimonials || []);
@@ -42,90 +42,79 @@ export default function ReviewsPage() {
     fetchReviews();
   }, []);
 
-const handleAddReview = async () => {
-  const { name, designation, comment, image } = newReview;
-  if (!name || !designation || !comment || !image) {
-    alert("Please fill in all fields including the image.");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("name", name);
-  formData.append("designation", designation);
-  formData.append("comment", comment);
-  formData.append("image", image); // 👈 FIXED field name here
-
-  setSubmitting(true);
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-testimonials`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    if (res.ok) {
-      await fetchReviews();
-      setNewReview({ name: "", designation: "", comment: "", image: null });
-      alert("Review added successfully!");
-    } else {
-      const errorData = await res.json();
-      console.error("Server error:", errorData);
-      alert("Failed to add review.");
+  // Add Review
+  const handleAddReview = async () => {
+    const { name, designation, comment, image } = newReview;
+    if (!name || !designation || !comment || !image) {
+      alert("Please fill in all fields including the image.");
+      return;
     }
-  } catch (err) {
-    console.error("Error adding review:", err);
-    alert("Something went wrong while adding the review.");
-  } finally {
-    setSubmitting(false);
-  }
-};
 
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("designation", designation);
+    formData.append("comment", comment);
+    formData.append("image", image);
+
+    setSubmitting(true);
+    try {
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-testimonials`,
+        formData
+      );
+
+      if (res.status === 200) {
+        await fetchReviews();
+        setNewReview({ name: "", designation: "", comment: "", image: null });
+        alert("Review added successfully!");
+      } else {
+        console.error("Server error:", res.data);
+        alert("Failed to add review.");
+      }
+    } catch (err) {
+      console.error("Error adding review:", err);
+      alert("Something went wrong while adding the review.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Delete Review
-const handleDelete = async (reviewId, index) => {
-  if (!reviewId) return alert("Invalid review ID");
+  const handleDelete = async (reviewId, index) => {
+    if (!reviewId) return alert("Invalid review ID");
 
-  setDeletingReviewId(reviewId);
+    setDeletingReviewId(reviewId);
 
-  const updated = [...reviews];
-  updated.splice(index, 1);
-  setReviews(updated);
+    const updated = [...reviews];
+    updated.splice(index, 1);
+    setReviews(updated);
 
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-testimonials/${reviewId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+    try {
+      const res = await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-testimonials/${reviewId}`
+      );
+
+      if (res.status === 200) {
+        alert("Review deleted successfully!");
+      } else {
+        console.error("Error deleting review:", res.data);
+        alert("Error deleting review.");
+        await fetchReviews(); // fallback
       }
-    );
-
-    if (res.ok) {
-      alert("Review deleted successfully!");
-    } else {
-      const errorData = await res.json();
-      console.error("Error deleting review:", errorData);
-      alert("Error deleting review.");
-      await fetchReviews(); // re-fetch in case of error
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      alert("Failed to delete review.");
+      await fetchReviews(); // fallback
+    } finally {
+      setDeletingReviewId(null);
     }
-  } catch (err) {
-    console.error("Error deleting review:", err);
-    alert("Failed to delete review.");
-    await fetchReviews(); // re-fetch in case of error
-  } finally {
-    setDeletingReviewId(null);
-  }
-};
-
+  };
 
   return (
     <div className="flex h-screen">
       <Sidebar />
       <div className="p-6 flex-1 overflow-y-auto relative">
-
-        {/* Full Page Loader */}
+        {/* Loader */}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-50">
             <div className="text-gray-600 text-xl">Loading reviews...</div>
@@ -174,10 +163,9 @@ const handleDelete = async (reviewId, index) => {
           <button
             onClick={handleAddReview}
             disabled={submitting}
-            className={`px-4 py-2 rounded text-white ${submitting
-              ? "bg-gray-400"
-              : "bg-green-600 hover:bg-green-700"
-              }`}
+            className={`px-4 py-2 rounded text-white ${
+              submitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
+            }`}
           >
             {submitting ? "Submitting..." : "Add to List"}
           </button>
@@ -185,7 +173,9 @@ const handleDelete = async (reviewId, index) => {
 
         {/* Review List */}
         {!loading && reviews.length === 0 && (
-          <div className="text-center text-gray-500">No reviews available.</div>
+          <div className="text-center text-gray-500">
+            No reviews available.
+          </div>
         )}
 
         <ul className="space-y-4">

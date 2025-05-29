@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
+import axios from "axios";
 
 export default function Portfolio() {
   const [formData, setFormData] = useState({
@@ -48,48 +49,42 @@ export default function Portfolio() {
   };
 
   const handleSubmit = async () => {
-    if (
-      !formData.category ||
-      !formData.title ||
-      !formData.description ||
-      !formData.subDescription ||
-      formData.onLandingPage === null ||
-      !formData.thumbnail
-    ) {
-      alert("Please fill in all required fields");
+    const {
+      category,
+      title,
+      description,
+      subDescription,
+      onLandingPage,
+      thumbnail,
+      portfolioImages,
+    } = formData;
+
+    if (!category || !title || !description || !subDescription || thumbnail == null) {
+      alert("Please fill in all required fields.");
       return;
     }
 
-    const body = new FormData();
-    body.append("category", formData.category);
-    body.append("title", formData.title);
-    body.append("description", formData.description);
-    body.append("subDescription", formData.subDescription);
-    body.append("onLandingPage", formData.onLandingPage);
-    body.append("thumbnail", formData.thumbnail);
-    formData.portfolioImages.forEach((file) => {
-      body.append("portfolioImages", file);
-    });
+    const form = new FormData();
+    form.append("category", category);
+    form.append("title", title);
+    form.append("description", description);
+    form.append("subDescription", subDescription);
+    form.append("onLandingPage", onLandingPage);
+    form.append("thumbnail", thumbnail);
+    portfolioImages.forEach((file) => form.append("portfolioImages", file));
 
     if (isEditing && editingId) {
-      body.append("id", editingId); // Include ID in body when editing
+      form.append("id", editingId);
     }
 
     setLoading(true);
     try {
       const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/add-services`;
 
-      const res = await fetch(url, {
-        method: "POST",
-        body,
-      });
+      const res = await axios.post(url, form);
 
-      if (res.ok) {
-        alert(
-          isEditing
-            ? "Portfolio item updated!"
-            : "Portfolio item uploaded successfully!"
-        );
+      if (res.status === 200) {
+        alert(isEditing ? "Portfolio item updated!" : "Portfolio item uploaded!");
         resetForm();
         fetchPortfolioItems();
       } else {
@@ -120,18 +115,16 @@ export default function Portfolio() {
   const fetchPortfolioItems = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
+      const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/get-services`
       );
-      const result = await res.json();
-
-      if (result.success) {
-        setPortfolioItems(result.data);
+      if (res.data.success) {
+        setPortfolioItems(res.data.data);
       } else {
         setError("Failed to fetch portfolio items.");
       }
     } catch (err) {
-      console.error("Error fetching portfolio items:", err);
+      console.error("Error fetching:", err);
       setError("An error occurred while fetching portfolio items.");
     } finally {
       setLoading(false);
@@ -147,8 +140,8 @@ export default function Portfolio() {
       description: item.description,
       subDescription: item.subDescription,
       onLandingPage: item.onLandingPage,
-      thumbnail: null, // Thumbnail ko re-upload karne doge
-      portfolioImages: [], // Existing images show nahi kar rahe ho abhi, toh blank rakhna
+      thumbnail: null,
+      portfolioImages: [],
     });
   };
 
@@ -158,21 +151,18 @@ export default function Portfolio() {
 
     setLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-service/${id}`,
-        {
-          method: "DELETE",
-        }
+      const res = await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/admin/delete-service/${id}`
       );
 
-      if (res.ok) {
+      if (res.status === 200) {
         alert("Deleted successfully!");
         fetchPortfolioItems();
       } else {
         alert("Delete failed.");
       }
     } catch (err) {
-      console.error("Error deleting item:", err);
+      console.error("Error deleting:", err);
       alert("Something went wrong.");
     } finally {
       setLoading(false);
@@ -347,8 +337,8 @@ export default function Portfolio() {
                     className="w-full h-48 object-cover rounded"
                   />
                   <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
-                  <p className="text-gray-500">Description: {item.description}</p><br></br>
-                  <p className="text-gray-500">Sub-Description: {item.subDescription}</p>
+                  <p className="text-gray-500">Description: {item.description}</p>
+                  <p className="text-gray-500 mt-2">Sub-Description: {item.subDescription}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {item.portfolioImages.map((img) => (
                       <img
